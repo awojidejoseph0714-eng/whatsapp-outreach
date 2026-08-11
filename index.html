@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Futapreneurs Outreach</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <h1>Futapreneurs — WhatsApp Outreach</h1>
+  <div class="sub">Upload your CSV once. Click a name, WhatsApp opens with the message ready — you just hit send.</div>
+
+  <div id="uploadCard" class="card">
+    <div class="drop" id="dropZone">
+      <div>Drop your CSV here, or</div>
+      <label class="btn" style="margin-top:10px;">
+        Choose CSV file
+        <input type="file" id="fileInput" accept=".csv">
+      </label>
+      <div class="format-hint">Expected columns (any order, header row required): <code>name</code>, <code>phone number</code>, <code>business stage</code></div>
+    </div>
+    <div id="uploadError" class="invalid" style="margin-top:10px;"></div>
+  </div>
+
+  <div id="mainCard" class="card" style="display:none;">
+    <div class="progress-row">
+      <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%;"></div></div>
+      <div class="progress-label" id="progressLabel">0 / 0 sent</div>
+    </div>
+
+    <div class="toolbar">
+      <input class="search" id="searchBox" placeholder="Search by name or phone…">
+      <label class="toggle"><input type="checkbox" id="pendingOnly"> Show pending only</label>
+      <button class="btn ghost small" id="resetBtn">Reset progress</button>
+      <button class="btn ghost small" id="newCsvBtn">Upload new CSV</button>
+    </div>
+
+    <div style="max-height:520px;overflow:auto;">
+      <table>
+        <thead><tr><th>Name</th><th>Phone</th><th>Stage</th><th>Status</th><th></th></tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+      <div class="empty" id="emptyState" style="display:none;">No contacts match this filter.</div>
+    </div>
+
+    <details style="margin-top:16px;">
+      <summary style="cursor:pointer;color:var(--muted);font-size:0.82rem;">Preview message template</summary>
+      <div class="preview-box" id="previewBox"></div>
+    </details>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
