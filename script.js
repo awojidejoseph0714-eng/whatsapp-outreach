@@ -540,6 +540,10 @@ searchBox.addEventListener('input', renderSession);
 pendingOnly.addEventListener('change', renderSession);
 
 // ---------- Init ----------
+function escapeHtml(s){
+  return (s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
 (async function init(){
   await loadSessions();
   showView('dashboard');
