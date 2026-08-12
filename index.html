@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Futapreneurs Outreach</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -23,9 +23,7 @@
     
     <div id="dashboardError" class="invalid" style="margin-bottom: 16px;"></div>
     
-    <div class="session-list" id="sessionList">
-      <!-- Session items injected here -->
-    </div>
+    <div class="session-list" id="sessionList"></div>
     
     <div class="empty" id="dashboardEmpty" style="display:none;">
       No campaigns yet. Click "New Campaign" to start.
@@ -34,7 +32,7 @@
 
   <!-- VIEW: UPLOAD / MAPPING -->
   <div id="viewUpload" class="card fade-in" style="display:none;">
-    <button class="btn small" id="btnCancelUpload" style="margin-bottom: 24px;">&larr; Back to Dashboard</button>
+    <button class="btn btn-elegant" id="btnCancelUpload" style="margin-bottom: 24px;">&larr; Back to Dashboard</button>
     
     <div id="uploadStep1">
       <div class="drop" id="dropZone" tabindex="0" aria-label="Drop area for CSV file">
@@ -70,58 +68,73 @@
   </div>
 
   <!-- VIEW: SESSION (ACTIVE CAMPAIGN) -->
-  <div id="viewSession" class="card fade-in" style="display:none;">
+  <div id="viewSession" class="fade-in" style="display:none;">
     
-    <div style="margin-bottom:24px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 16px;">
-       <button class="btn small" id="btnBackToDash">&larr; Dashboard</button>
+    <div class="session-top-bar">
+       <button class="btn btn-elegant" id="btnBackToDash">&larr; Dashboard</button>
        <h2 id="sessionTitleDisplay" style="margin:0; font-size:18px;">Session Name</h2>
-       <button class="btn small interactive" id="btnEditSessionName" aria-label="Rename session">Rename</button>
+       <button class="btn btn-elegant interactive" id="btnEditSessionName" aria-label="Rename session">Rename</button>
        <div class="spacer"></div>
-       <button class="btn small interactive invalid" id="btnDeleteSession" style="border-color:#eb5757; color:#eb5757;">Delete Campaign</button>
+       <button class="btn btn-elegant interactive" id="btnDeleteSession" style="color:#eb5757; border-color:transparent;">Delete Campaign</button>
     </div>
     
-    <div class="stats-board">
-      <div class="stat">
-        <div class="stat-label">Total</div>
-        <div class="stat-value" id="statTotal" aria-live="polite">0</div>
+    <div class="stats-board-v2">
+      <div class="stat-v2">
+        <div class="stat-val-v2" id="statTotal" style="color: #202020;" aria-live="polite">0</div>
+        <div class="stat-lbl-v2">TOTAL</div>
       </div>
-      <div class="stat">
-        <div class="stat-label">Sent</div>
-        <div class="stat-value" id="statSent" aria-live="polite">0</div>
+      <div class="stat-v2">
+        <div class="stat-val-v2" id="statSent" style="color: #1a7f37;" aria-live="polite">0</div>
+        <div class="stat-lbl-v2">SENT</div>
       </div>
-      <div class="stat">
-        <div class="stat-label">Pending</div>
-        <div class="stat-value" id="statPending" aria-live="polite">0</div>
+      <div class="stat-v2">
+        <div class="stat-val-v2" id="statPending" style="color: #d29922;" aria-live="polite">0</div>
+        <div class="stat-lbl-v2">PENDING</div>
       </div>
-    </div>
-
-    <div class="progress-row" aria-hidden="true">
-      <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%;"></div></div>
+      <div class="progress-wrap-v2" aria-hidden="true">
+        <div class="progress-track-v2"><div class="progress-fill-v2" id="progressFill"></div></div>
+        <div class="progress-text-v2" id="progressText">0%</div>
+      </div>
     </div>
 
     <div class="actions-board">
       <button class="btn btn-primary interactive" id="nextPendingBtn" aria-label="Message Next Pending">
         Message Next Pending
       </button>
-      <button class="btn interactive" id="undoGlobalBtn" style="display:none;" title="Undo last message sent" aria-label="Undo Last Sent Message">
+      <button class="btn btn-elegant interactive" id="undoGlobalBtn" style="display:none;" title="Undo last message sent" aria-label="Undo Last Sent Message">
         Undo Last
       </button>
     </div>
 
-    <details class="template-section" open>
-      <summary aria-expanded="true">Message Template</summary>
-      <div class="template-editor">
-        <div class="template-hints">Use WhatsApp formatting (*bold*, _italic_) and tags: <code class="tag">{name}</code> <code class="tag">{first_name}</code> <code class="tag">{phone}</code></div>
-        <textarea id="templateInput" rows="6" placeholder="Type your message template here..." aria-label="Message template text area"></textarea>
+    <div class="editor-section">
+      <div class="editor-header-text">MESSAGE</div>
+      <div class="editor-box">
+        <div class="editor-tabs">
+          <button class="editor-tab active" id="tabEdit">Edit</button>
+          <button class="editor-tab" id="tabPreview">Preview</button>
+        </div>
+        
+        <div class="editor-body" id="editorBodyEdit">
+          <textarea id="templateInput" rows="6" placeholder="Type your message template here..." aria-label="Message template text area"></textarea>
+          <div class="editor-tags">
+            <span class="editor-tag">{name}</span>
+            <span class="editor-tag">{first_name}</span>
+            <span class="editor-tag">{phone}</span>
+          </div>
+        </div>
+        
+        <div class="editor-body" id="editorBodyPreview" style="display:none;">
+          <div id="previewArea" class="preview-area"></div>
+        </div>
       </div>
-    </details>
+    </div>
 
     <div class="toolbar">
       <input class="search interactive" id="searchBox" placeholder="Search contacts..." aria-label="Search contacts">
       <label class="toggle"><input type="checkbox" id="pendingOnly" class="interactive"> Pending only</label>
       
       <div class="batch-action">
-        <label for="batchFirstNameSelect" style="font-size: 14px; font-weight: 500; margin-right: 8px;">Batch Set First Name:</label>
+        <label for="batchFirstNameSelect" style="font-size: 13px; font-weight: 500; margin-right: 8px;">Batch Set First Name:</label>
         <select id="batchFirstNameSelect" class="interactive" aria-label="Batch select first name position">
           <option value="none">-- Select Position --</option>
           <option value="0">1st Word</option>
@@ -133,15 +146,14 @@
     </div>
 
     <div class="table-container">
-      <table>
+      <table class="table-v2">
         <thead>
           <tr>
-            <th>Full Name</th>
-            <th>Selected First Name</th>
-            <th>Phone</th>
-            <th>Stage</th>
-            <th>Status</th>
-            <th>Action</th>
+            <th>NAME</th>
+            <th>SELECTED FIRST NAME</th>
+            <th>PHONE</th>
+            <th>STATUS</th>
+            <th>ACTION</th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>

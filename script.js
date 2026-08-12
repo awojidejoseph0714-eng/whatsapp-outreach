@@ -2,11 +2,10 @@ const DEFAULT_TEMPLATE = `Happy New Month, {first_name}. This is Adura from Futa
 
 const SESSIONS_KEY = 'wa-outreach-sessions-v2';
 
-let sessions = []; // Array of session objects
+let sessions = [];
 let currentSession = null;
 let lastSentKey = null;
 
-// Temporary vars during CSV upload mapping
 let pendingCSVHeaders = [];
 let pendingCSVRows = [];
 
@@ -43,6 +42,13 @@ const statTotal = document.getElementById('statTotal');
 const statSent = document.getElementById('statSent');
 const statPending = document.getElementById('statPending');
 const progressFill = document.getElementById('progressFill');
+const progressText = document.getElementById('progressText');
+
+const tabEdit = document.getElementById('tabEdit');
+const tabPreview = document.getElementById('tabPreview');
+const editorBodyEdit = document.getElementById('editorBodyEdit');
+const editorBodyPreview = document.getElementById('editorBodyPreview');
+const previewArea = document.getElementById('previewArea');
 
 // ---------- Storage ----------
 async function loadSessions(){
@@ -104,22 +110,19 @@ function renderDashboard() {
         dashboardEmpty.style.display = 'block';
     } else {
         dashboardEmpty.style.display = 'none';
-        // Sort newest first
         const sorted = [...sessions].sort((a,b) => b.timestamp - a.timestamp);
         
         sorted.forEach(s => {
             const div = document.createElement('div');
             div.className = 'session-item';
-            
             const total = s.contacts.length;
             const sent = s.sentSet.length;
-            
             div.innerHTML = `
                 <div class="session-info">
                     <h3>${escapeHtml(s.name)}</h3>
                     <div class="session-meta">Created: ${new Date(s.timestamp).toLocaleString()} &bull; ${sent}/${total} Sent</div>
                 </div>
-                <button class="btn small" data-open-session="${s.id}">Open</button>
+                <button class="btn btn-elegant small" data-open-session="${s.id}">Open</button>
             `;
             sessionList.appendChild(div);
         });
@@ -140,17 +143,12 @@ sessionList.addEventListener('click', (e) => {
     }
 });
 
-document.getElementById('btnNewCampaign').addEventListener('click', () => {
-    showView('upload');
-});
-document.getElementById('btnCancelUpload').addEventListener('click', () => {
-    showView('dashboard');
-});
+document.getElementById('btnNewCampaign').addEventListener('click', () => showView('upload'));
+document.getElementById('btnCancelUpload').addEventListener('click', () => showView('dashboard'));
 document.getElementById('btnBackToDash').addEventListener('click', () => {
     saveSessions();
     showView('dashboard');
 });
-
 document.getElementById('btnEditSessionName').addEventListener('click', () => {
     const newName = prompt("Enter new campaign name:", currentSession.name);
     if(newName && newName.trim()) {
@@ -204,7 +202,6 @@ function handleFile(file){
       pendingCSVHeaders = rows[0].map(h => h.trim());
       pendingCSVRows = rows.slice(1);
       
-      // Populate Mapping UI
       mapNameCol.innerHTML = '';
       mapPhoneCol.innerHTML = '';
       mapStageCol.innerHTML = '<option value="-1">-- None --</option>';
@@ -222,19 +219,16 @@ function handleFile(file){
           mapStageCol.innerHTML += `<option value="${i}">${escapeHtml(h)}</option>`;
       });
       
-      // Fallback
       if(bestName === bestPhone && pendingCSVHeaders.length > 1) {
           bestName = 0;
           bestPhone = 1;
       }
-      
       mapNameCol.value = bestName;
       mapPhoneCol.value = bestPhone;
       mapStageCol.value = bestStage;
       
       uploadStep1.style.display = 'none';
       uploadStep2.style.display = 'block';
-
     }catch(err){
       uploadError.textContent = err.message;
     }
@@ -287,7 +281,6 @@ document.getElementById('btnSaveMapping').addEventListener('click', async () => 
     
     sessions.push(newSession);
     await saveSessions();
-    
     currentSession = newSession;
     lastSentKey = null;
     undoGlobalBtn.style.display = 'none';
@@ -314,6 +307,33 @@ templateInput.addEventListener('input', () => {
         currentSession.template = templateInput.value;
         saveSessions();
         renderSession();
+    }
+});
+
+// Editor Tabs
+tabEdit.addEventListener('click', () => {
+    tabEdit.classList.add('active');
+    tabPreview.classList.remove('active');
+    editorBodyEdit.style.display = 'block';
+    editorBodyPreview.style.display = 'none';
+});
+tabPreview.addEventListener('click', () => {
+    tabPreview.classList.add('active');
+    tabEdit.classList.remove('active');
+    editorBodyPreview.style.display = 'block';
+    editorBodyEdit.style.display = 'none';
+    
+    if(currentSession && currentSession.contacts.length > 0) {
+        // Show preview for the first contact
+        const sampleMsg = generateMessage(currentSession.contacts[0]);
+        // Simple mock whatsapp formatter: *bold* -> <strong>bold</strong>
+        const formattedMsg = escapeHtml(sampleMsg)
+            .replace(/\*(.*?)\*/g, '<strong>$1</strong>')
+            .replace(/_(.*?)_/g, '<em>$1</em>')
+            .replace(/~(.*?)~/g, '<del>$1</del>');
+        previewArea.innerHTML = formattedMsg;
+    } else {
+        previewArea.innerHTML = "<em>No contacts to preview.</em>";
     }
 });
 
@@ -364,7 +384,6 @@ function renderSession(){
         selectOptions += `<option value="${wordIdx}" ${selected}>${escapeHtml(word)}</option>`;
     });
     
-    // Inline phone editing if invalid
     let phoneDisplay = '';
     if(c.valid) {
         phoneDisplay = escapeHtml(c.phone);
@@ -372,11 +391,15 @@ function renderSession(){
         phoneDisplay = `
             <div class="inline-edit-wrap">
                 <input type="text" class="inline-input" value="${escapeHtml(c.phone)}" data-edit-phone="${idx}">
-                <button class="btn small interactive" data-save-phone="${idx}">Save</button>
+                <button class="btn btn-elegant small interactive" data-save-phone="${idx}">Save</button>
             </div>
             <div class="invalid" style="font-size:11px; margin-top:4px;">Invalid number</div>
         `;
     }
+
+    const statusPill = isSent 
+        ? `<span class="status-pill status-sent">Sent</span>` 
+        : `<span class="status-pill status-pending">Pending</span>`;
 
     tr.innerHTML = `
       <td class="name-cell">${escapeHtml(c.name)}</td>
@@ -385,13 +408,12 @@ function renderSession(){
             ${selectOptions}
         </select>
       </td>
-      <td class="phone-cell">${phoneDisplay}</td>
-      <td>${c.stage ? `<span class="stage-badge">${escapeHtml(c.stage)}</span>` : ''}</td>
-      <td>${isSent ? 'Sent' : 'Pending'}</td>
+      <td>${phoneDisplay}</td>
+      <td>${statusPill}</td>
       <td>
-        <div style="display:flex;gap:6px;">
-            <a class="btn btn-primary small interactive ${c.valid ? '' : 'invalid'}" ${c.valid ? `href="${link}"` : 'disabled'} target="_blank" rel="noopener" data-idx="${idx}">Open chat</a>
-            <button class="btn small interactive" data-toggle="${idx}" ${!c.valid && !isSent ? 'disabled' : ''}>${isSent ? 'Undo' : 'Mark sent'}</button>
+        <div style="display:flex;gap:8px;">
+            <a class="btn btn-elegant small interactive ${c.valid ? '' : 'invalid'}" ${c.valid ? `href="${link}"` : 'disabled'} target="_blank" rel="noopener" data-idx="${idx}">Send</a>
+            <button class="btn btn-elegant small interactive" data-toggle="${idx}" ${!c.valid && !isSent ? 'disabled' : ''}>${isSent ? 'Undo' : 'Mark'}</button>
         </div>
       </td>
     `;
@@ -409,9 +431,10 @@ function renderSession(){
   statSent.textContent = sentCount;
   statPending.textContent = pendingCount;
   
-  progressFill.style.width = total ? `${(sentCount/total*100)}%` : '0%';
+  const pct = total ? Math.round((sentCount/total)*100) : 0;
+  progressFill.style.width = `${pct}%`;
+  progressText.textContent = `${pct}%`;
 
-  // Next Pending Button state
   if (nextPendingIndex !== -1) {
       nextPendingBtn.disabled = false;
       const firstName = currentSession.contacts[nextPendingIndex].nameWords[currentSession.contacts[nextPendingIndex].firstNameIndex];
@@ -419,7 +442,6 @@ function renderSession(){
       nextPendingBtn.onclick = () => {
           const c = currentSession.contacts[nextPendingIndex];
           const key = c.phone + '|' + nextPendingIndex;
-          
           const message = generateMessage(c);
           window.open(`https://wa.me/${c.phone}?text=${encodeURIComponent(message)}`, '_blank');
           
@@ -434,9 +456,11 @@ function renderSession(){
       nextPendingBtn.textContent = `All Done!`;
       nextPendingBtn.onclick = null;
   }
+  
+  // Refresh preview if open
+  if(tabPreview.classList.contains('active')) tabPreview.click();
 }
 
-// Global Undo
 undoGlobalBtn.addEventListener('click', () => {
     if(!currentSession) return;
     if(lastSentKey && currentSession.sentSet.includes(lastSentKey)) {
@@ -448,11 +472,9 @@ undoGlobalBtn.addEventListener('click', () => {
     }
 });
 
-// Table interactions
 tableBody.addEventListener('click', (e) => {
   if(!currentSession) return;
   
-  // Save inline phone edit
   const savePhoneBtn = e.target.closest('button[data-save-phone]');
   if(savePhoneBtn) {
       const idx = savePhoneBtn.getAttribute('data-save-phone');
@@ -505,7 +527,6 @@ tableBody.addEventListener('click', (e) => {
   }
 });
 
-// Batch First Name Dropdown
 batchFirstNameSelect.addEventListener('change', (e) => {
     if(!currentSession) return;
     const val = parseInt(e.target.value, 10);
@@ -524,7 +545,6 @@ batchFirstNameSelect.addEventListener('change', (e) => {
     e.target.value = "none";
 });
 
-// Individual Name Dropdown
 tableBody.addEventListener('change', (e) => {
     if(!currentSession) return;
     if(e.target.hasAttribute('data-name-select')) {
@@ -539,11 +559,11 @@ tableBody.addEventListener('change', (e) => {
 searchBox.addEventListener('input', renderSession);
 pendingOnly.addEventListener('change', renderSession);
 
-// ---------- Init ----------
 function escapeHtml(s){
   return (s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
+// ---------- Init ----------
 (async function init(){
   await loadSessions();
   showView('dashboard');
