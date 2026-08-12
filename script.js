@@ -6,7 +6,7 @@ const TEMPLATE_KEY = 'wa-outreach-template';
 
 let contacts = [];   
 let sentSet = new Set();
-let lastSentKey = null; // for global undo
+let lastSentKey = null;
 
 const uploadCard = document.getElementById('uploadCard');
 const mainCard = document.getElementById('mainCard');
@@ -18,6 +18,7 @@ const emptyState = document.getElementById('emptyState');
 const templateInput = document.getElementById('templateInput');
 const nextPendingBtn = document.getElementById('nextPendingBtn');
 const undoGlobalBtn = document.getElementById('undoGlobalBtn');
+const batchFirstNameSelect = document.getElementById('batchFirstNameSelect');
 
 const statTotal = document.getElementById('statTotal');
 const statSent = document.getElementById('statSent');
@@ -60,12 +61,10 @@ function normalizePhone(raw){
 function buildContacts(rows){
   const header = rows[0].map(h => h.trim().toLowerCase());
   
-  // Flexible matching
   let nameIdx = header.findIndex(h => h.includes('name'));
   let phoneIdx = header.findIndex(h => h.includes('phone') || h.includes('number') || h.includes('contact'));
   let stageIdx = header.findIndex(h => h.includes('stage') || h.includes('level'));
 
-  // Fallback to first two columns if strict matching fails
   if (nameIdx === -1) nameIdx = 0;
   if (phoneIdx === -1 && header.length > 1) phoneIdx = 1;
 
@@ -79,9 +78,21 @@ function buildContacts(rows){
     if(!name && !rawPhone) continue;
     
     const phone = normalizePhone(rawPhone);
-    const firstName = name.split(/\s+/)[0] || name;
     const valid = /^234\d{10}$/.test(phone) || (phone.length >= 11 && phone.length <= 13);
-    out.push({ name, phone, stage, firstName, valid });
+    
+    // Split name into words for the dropdown feature
+    const nameWords = name.split(/\s+/).filter(w => w.length > 0);
+    // If name is completely empty after split, give it a placeholder
+    if(nameWords.length === 0) nameWords.push('Friend');
+
+    out.push({ 
+        name, 
+        phone, 
+        stage, 
+        valid,
+        nameWords,
+        firstNameIndex: 0 // Default to first word
+    });
   }
   return out;
 }
@@ -124,14 +135,18 @@ async function saveTemplate() { await saveStorageData(TEMPLATE_KEY, templateInpu
 
 templateInput.addEventListener('input', () => {
     saveTemplate();
-    render(); // Re-render links immediately
+    render();
 });
 
 // ---------- Rendering ----------
 function generateMessage(c) {
     let tpl = templateInput.value;
     tpl = tpl.replace(/{name}/g, c.name);
-    tpl = tpl.replace(/{first_name}/g, c.firstName);
+    
+    // Get the selected first name based on the index
+    const firstName = c.nameWords[c.firstNameIndex] || c.nameWords[0];
+    tpl = tpl.replace(/{first_name}/g, firstName);
+    
     tpl = tpl.replace(/{phone}/g, c.phone);
     return tpl;
 }
@@ -162,15 +177,27 @@ function render(){
     const message = generateMessage(c);
     const link = `https://wa.me/${c.phone}?text=${encodeURIComponent(message)}`;
 
+    // Build the dropdown options for this contact's name
+    let selectOptions = '';
+    c.nameWords.forEach((word, wordIdx) => {
+        const selected = wordIdx === c.firstNameIndex ? 'selected' : '';
+        selectOptions += `<option value="${wordIdx}" ${selected}>${escapeHtml(word)}</option>`;
+    });
+
     tr.innerHTML = `
       <td class="name-cell">${escapeHtml(c.name)}</td>
+      <td>
+        <select class="interactive" aria-label="Select first name for ${escapeHtml(c.name)}" data-name-select="${idx}">
+            ${selectOptions}
+        </select>
+      </td>
       <td class="phone-cell">${c.valid ? escapeHtml(c.phone) : `<span class="invalid">${escapeHtml(c.phone || '—')} (check)</span>`}</td>
       <td>${c.stage ? `<span class="stage-badge">${escapeHtml(c.stage)}</span>` : ''}</td>
-      <td>${isSent ? '<span class="sent-tag">✓ Sent</span>' : ''}</td>
+      <td>${isSent ? 'Sent' : 'Pending'}</td>
       <td>
         <div style="display:flex;gap:6px;">
-            <a class="btn btn-primary small" href="${link}" target="_blank" rel="noopener" data-idx="${idx}">Open chat</a>
-            <button class="btn btn-ghost small" data-toggle="${idx}">${isSent ? 'Undo' : 'Mark sent'}</button>
+            <a class="btn btn-primary small interactive" href="${link}" target="_blank" rel="noopener" data-idx="${idx}" aria-label="Open chat with ${escapeHtml(c.name)}">Open chat</a>
+            <button class="btn small interactive" data-toggle="${idx}" aria-label="Toggle sent status for ${escapeHtml(c.name)}">${isSent ? 'Undo' : 'Mark sent'}</button>
         </div>
       </td>
     `;
@@ -193,16 +220,15 @@ function render(){
   // Next Pending Button state
   if (nextPendingIndex !== -1) {
       nextPendingBtn.disabled = false;
-      nextPendingBtn.innerHTML = `<span class="icon">⚡</span> Message Next Pending (${escapeHtml(contacts[nextPendingIndex].firstName)})`;
+      const firstName = contacts[nextPendingIndex].nameWords[contacts[nextPendingIndex].firstNameIndex];
+      nextPendingBtn.textContent = `Message Next Pending (${escapeHtml(firstName)})`;
       nextPendingBtn.onclick = () => {
           const c = contacts[nextPendingIndex];
           const key = c.phone + '|' + nextPendingIndex;
           
-          // Open chat
           const message = generateMessage(c);
           window.open(`https://wa.me/${c.phone}?text=${encodeURIComponent(message)}`, '_blank');
           
-          // Mark sent
           sentSet.add(key);
           lastSentKey = key;
           saveProgress();
@@ -211,7 +237,7 @@ function render(){
       };
   } else {
       nextPendingBtn.disabled = true;
-      nextPendingBtn.innerHTML = `<span class="icon">🎉</span> All Done!`;
+      nextPendingBtn.textContent = `All Done!`;
       nextPendingBtn.onclick = null;
   }
 }
@@ -219,6 +245,41 @@ function render(){
 function escapeHtml(s){
   return (s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
+
+// ----- Event Listeners -----
+
+// Batch First Name Dropdown
+batchFirstNameSelect.addEventListener('change', (e) => {
+    const val = parseInt(e.target.value, 10);
+    if(isNaN(val)) return;
+
+    contacts.forEach(c => {
+        if(val === -1) {
+            // Last word
+            c.firstNameIndex = Math.max(0, c.nameWords.length - 1);
+        } else {
+            // Cap the index at the length of their name array - 1
+            c.firstNameIndex = Math.min(val, Math.max(0, c.nameWords.length - 1));
+        }
+    });
+
+    saveContacts();
+    render();
+    
+    // Reset the dropdown back to placeholder
+    e.target.value = "none";
+});
+
+// Individual Name Dropdown
+tableBody.addEventListener('change', (e) => {
+    if(e.target.hasAttribute('data-name-select')) {
+        const idx = e.target.getAttribute('data-name-select');
+        const newWordIdx = parseInt(e.target.value, 10);
+        contacts[idx].firstNameIndex = newWordIdx;
+        saveContacts();
+        render(); // Re-render to update the WhatsApp link
+    }
+});
 
 // Global Undo
 undoGlobalBtn.addEventListener('click', () => {
@@ -231,6 +292,7 @@ undoGlobalBtn.addEventListener('click', () => {
     }
 });
 
+// Table buttons
 tableBody.addEventListener('click', (e) => {
   const openLink = e.target.closest('a[data-idx]');
   if(openLink){
@@ -328,6 +390,14 @@ dropZone.addEventListener('drop', (e) => {
   e.preventDefault();
   dropZone.classList.remove('drag');
   if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+
+// Keyboard accessibility for drag and drop zone
+dropZone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        fileInput.click();
+    }
 });
 
 // ---------- Init ----------

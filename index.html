@@ -15,15 +15,15 @@
   </div>
 
   <div id="uploadCard" class="card fade-in">
-    <div class="drop" id="dropZone">
+    <div class="drop" id="dropZone" tabindex="0" aria-label="Drop area for CSV file">
       <div style="font-weight: 500; margin-bottom: 8px;">Upload Contacts CSV</div>
       <div class="format-hint">Expected: Name, Phone</div>
-      <label class="btn btn-primary" style="margin-top:20px;">
+      <label class="btn btn-primary" style="margin-top:20px; cursor: pointer;">
         Select File
-        <input type="file" id="fileInput" accept=".csv">
+        <input type="file" id="fileInput" accept=".csv" aria-label="Select CSV File">
       </label>
     </div>
-    <div id="uploadError" class="invalid" style="margin-top:10px;"></div>
+    <div id="uploadError" class="invalid" style="margin-top:10px;" aria-live="polite"></div>
   </div>
 
   <div id="mainCard" class="card fade-in" style="display:none;">
@@ -31,53 +31,74 @@
     <div class="stats-board">
       <div class="stat">
         <div class="stat-label">Total</div>
-        <div class="stat-value" id="statTotal">0</div>
+        <div class="stat-value" id="statTotal" aria-live="polite">0</div>
       </div>
       <div class="stat">
         <div class="stat-label">Sent</div>
-        <div class="stat-value" id="statSent">0</div>
+        <div class="stat-value" id="statSent" aria-live="polite">0</div>
       </div>
       <div class="stat">
         <div class="stat-label">Pending</div>
-        <div class="stat-value" id="statPending">0</div>
+        <div class="stat-value" id="statPending" aria-live="polite">0</div>
       </div>
     </div>
 
-    <div class="progress-row">
+    <div class="progress-row" aria-hidden="true">
       <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%;"></div></div>
     </div>
 
     <div class="actions-board">
-      <button class="btn btn-primary" id="nextPendingBtn">
+      <button class="btn btn-primary interactive" id="nextPendingBtn" aria-label="Message Next Pending">
         Message Next Pending
       </button>
-      <button class="btn" id="undoGlobalBtn" style="display:none;" title="Undo last message sent">
+      <button class="btn interactive" id="undoGlobalBtn" style="display:none;" title="Undo last message sent" aria-label="Undo Last Sent Message">
         Undo Last
       </button>
     </div>
 
     <details class="template-section" open>
-      <summary>Message Template</summary>
+      <summary aria-expanded="true">Message Template</summary>
       <div class="template-editor">
         <div class="template-hints">Use WhatsApp formatting (*bold*, _italic_) and tags: <code class="tag">{name}</code> <code class="tag">{first_name}</code> <code class="tag">{phone}</code></div>
-        <textarea id="templateInput" rows="6" placeholder="Type your message template here..."></textarea>
+        <textarea id="templateInput" rows="6" placeholder="Type your message template here..." aria-label="Message template text area"></textarea>
       </div>
     </details>
 
     <div class="toolbar">
-      <input class="search" id="searchBox" placeholder="Search contacts...">
-      <label class="toggle"><input type="checkbox" id="pendingOnly"> Pending only</label>
+      <input class="search interactive" id="searchBox" placeholder="Search contacts..." aria-label="Search contacts">
+      <label class="toggle"><input type="checkbox" id="pendingOnly" class="interactive"> Pending only</label>
+      
+      <div class="batch-action">
+        <label for="batchFirstNameSelect" style="font-size: 14px; font-weight: 500; margin-right: 8px;">Batch Set First Name:</label>
+        <select id="batchFirstNameSelect" class="interactive" aria-label="Batch select first name position">
+          <option value="none">-- Select Position --</option>
+          <option value="0">1st Word</option>
+          <option value="1">2nd Word</option>
+          <option value="2">3rd Word</option>
+          <option value="-1">Last Word</option>
+        </select>
+      </div>
+
       <div class="spacer"></div>
-      <button class="btn small" id="resetBtn">Reset All</button>
-      <button class="btn small" id="newCsvBtn">New CSV</button>
+      <button class="btn small interactive" id="resetBtn">Reset All</button>
+      <button class="btn small interactive" id="newCsvBtn">New CSV</button>
     </div>
 
     <div class="table-container">
       <table>
-        <thead><tr><th>Name</th><th>Phone</th><th>Stage</th><th>Status</th><th>Action</th></tr></thead>
+        <thead>
+          <tr>
+            <th>Full Name</th>
+            <th>Selected First Name</th>
+            <th>Phone</th>
+            <th>Stage</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
         <tbody id="tableBody"></tbody>
       </table>
-      <div class="empty" id="emptyState" style="display:none;">
+      <div class="empty" id="emptyState" style="display:none;" aria-live="polite">
         No contacts found.
       </div>
     </div>
