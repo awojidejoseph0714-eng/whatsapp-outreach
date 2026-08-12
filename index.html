@@ -4,25 +4,24 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Futapreneurs Outreach</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="wrap">
   <div class="header">
     <h1>Futapreneurs Outreach</h1>
-    <div class="sub">Upload your CSV. Customize your template. Reach out faster.</div>
+    <div class="sub">Upload CSV. Customize template. Send messages.</div>
   </div>
 
   <div id="uploadCard" class="card fade-in">
     <div class="drop" id="dropZone">
-      <div class="icon-upload">📁</div>
-      <div>Drag and drop your CSV here, or</div>
-      <label class="btn btn-primary" style="margin-top:16px;">
-        Browse Files
+      <div style="font-weight: 500; margin-bottom: 8px;">Upload Contacts CSV</div>
+      <div class="format-hint">Expected: Name, Phone</div>
+      <label class="btn btn-primary" style="margin-top:20px;">
+        Select File
         <input type="file" id="fileInput" accept=".csv">
       </label>
-      <div class="format-hint">We'll automatically detect <code>Name</code> and <code>Phone</code> columns.</div>
     </div>
     <div id="uploadError" class="invalid" style="margin-top:10px;"></div>
   </div>
@@ -31,16 +30,16 @@
     
     <div class="stats-board">
       <div class="stat">
-        <div class="stat-value" id="statTotal">0</div>
         <div class="stat-label">Total</div>
+        <div class="stat-value" id="statTotal">0</div>
       </div>
       <div class="stat">
-        <div class="stat-value text-accent" id="statSent">0</div>
         <div class="stat-label">Sent</div>
+        <div class="stat-value" id="statSent">0</div>
       </div>
       <div class="stat">
-        <div class="stat-value text-warning" id="statPending">0</div>
         <div class="stat-label">Pending</div>
+        <div class="stat-value" id="statPending">0</div>
       </div>
     </div>
 
@@ -49,28 +48,28 @@
     </div>
 
     <div class="actions-board">
-      <button class="btn btn-gradient btn-large" id="nextPendingBtn">
-        <span class="icon">⚡</span> Message Next Pending
+      <button class="btn btn-primary" id="nextPendingBtn">
+        Message Next Pending
       </button>
-      <button class="btn btn-ghost" id="undoGlobalBtn" style="display:none;" title="Undo last message sent">
-        <span class="icon">↩️</span> Undo Last
+      <button class="btn" id="undoGlobalBtn" style="display:none;" title="Undo last message sent">
+        Undo Last
       </button>
     </div>
 
     <details class="template-section" open>
-      <summary>✏️ Edit Message Template</summary>
+      <summary>Message Template</summary>
       <div class="template-editor">
-        <div class="template-hints">Available placeholders: <code class="tag">{name}</code> <code class="tag">{first_name}</code> <code class="tag">{phone}</code></div>
+        <div class="template-hints">Use WhatsApp formatting (*bold*, _italic_) and tags: <code class="tag">{name}</code> <code class="tag">{first_name}</code> <code class="tag">{phone}</code></div>
         <textarea id="templateInput" rows="6" placeholder="Type your message template here..."></textarea>
       </div>
     </details>
 
     <div class="toolbar">
-      <input class="search" id="searchBox" placeholder="🔍 Search contacts...">
-      <label class="toggle"><input type="checkbox" id="pendingOnly"> Show pending only</label>
+      <input class="search" id="searchBox" placeholder="Search contacts...">
+      <label class="toggle"><input type="checkbox" id="pendingOnly"> Pending only</label>
       <div class="spacer"></div>
-      <button class="btn btn-ghost small" id="resetBtn">Reset All</button>
-      <button class="btn btn-ghost small" id="newCsvBtn">New CSV</button>
+      <button class="btn small" id="resetBtn">Reset All</button>
+      <button class="btn small" id="newCsvBtn">New CSV</button>
     </div>
 
     <div class="table-container">
@@ -79,7 +78,6 @@
         <tbody id="tableBody"></tbody>
       </table>
       <div class="empty" id="emptyState" style="display:none;">
-        <div class="icon-empty">📭</div>
         No contacts found.
       </div>
     </div>
