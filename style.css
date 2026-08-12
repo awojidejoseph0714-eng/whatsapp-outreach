@@ -143,6 +143,7 @@ input[type=file] { display: none; }
 }
 .btn:active { 
   background: #f0f0f0;
+  transform: scale(0.98);
 }
 
 .btn-primary {
@@ -156,6 +157,7 @@ input[type=file] { display: none; }
 }
 .btn-primary:active {
   background: #000000;
+  transform: scale(0.98);
 }
 .btn-primary:disabled {
   opacity: 0.5;
@@ -172,6 +174,10 @@ input[type=file] { display: none; }
 .btn-elegant:hover {
   background: #fafafa;
   border-color: #b0b0b0;
+}
+.btn-elegant:active {
+  background: #f0f0f0;
+  transform: scale(0.98);
 }
 .btn-elegant:disabled {
   opacity: 0.4;

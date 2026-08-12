@@ -206,18 +206,22 @@ function handleFile(file){
       mapPhoneCol.innerHTML = '';
       mapStageCol.innerHTML = '<option value="-1">-- None --</option>';
       
-      let bestName = 0, bestPhone = 0, bestStage = -1;
+      let bestName = -1, bestPhone = -1, bestStage = -1;
       
       pendingCSVHeaders.forEach((h, i) => {
           const hl = h.toLowerCase();
-          if(hl.includes('name')) bestName = i;
-          if(hl.includes('phone') || hl.includes('number') || hl.includes('contact')) bestPhone = i;
-          if(hl.includes('stage') || hl.includes('level')) bestStage = i;
+          // Pick the first match instead of the last
+          if(bestName === -1 && hl.includes('name')) bestName = i;
+          if(bestPhone === -1 && (hl.includes('phone') || hl.includes('number') || hl.includes('contact'))) bestPhone = i;
+          if(bestStage === -1 && (hl.includes('stage') || hl.includes('level'))) bestStage = i;
           
           mapNameCol.innerHTML += `<option value="${i}">${escapeHtml(h)}</option>`;
           mapPhoneCol.innerHTML += `<option value="${i}">${escapeHtml(h)}</option>`;
           mapStageCol.innerHTML += `<option value="${i}">${escapeHtml(h)}</option>`;
       });
+      
+      if(bestName === -1) bestName = 0;
+      if(bestPhone === -1) bestPhone = pendingCSVHeaders.length > 1 ? 1 : 0;
       
       if(bestName === bestPhone && pendingCSVHeaders.length > 1) {
           bestName = 0;
@@ -256,7 +260,7 @@ document.getElementById('btnSaveMapping').addEventListener('click', async () => 
         if(p.startsWith('0')) p = '234' + p.slice(1);
         else if(p.length === 10) p = '234' + p;
         
-        const valid = /^234\d{10}$/.test(p) || (p.length >= 11 && p.length <= 13);
+        const valid = /^234\d{10}$/.test(p);
         const nameWords = name.split(/\s+/).filter(w => w.length > 0);
         if(nameWords.length === 0) nameWords.push('Friend');
         
@@ -485,7 +489,7 @@ tableBody.addEventListener('click', (e) => {
           else if(p.length === 10) p = '234' + p;
           
           currentSession.contacts[idx].phone = p;
-          currentSession.contacts[idx].valid = /^234\d{10}$/.test(p) || (p.length >= 11 && p.length <= 13);
+          currentSession.contacts[idx].valid = /^234\d{10}$/.test(p);
           saveSessions();
           renderSession();
       }
@@ -530,6 +534,11 @@ batchFirstNameSelect.addEventListener('change', (e) => {
     if(!currentSession) return;
     const val = parseInt(e.target.value, 10);
     if(isNaN(val)) return;
+
+    if(!confirm("This will overwrite manual name choices for all contacts. Proceed?")) {
+        e.target.value = "none";
+        return;
+    }
 
     currentSession.contacts.forEach(c => {
         if(val === -1) {
