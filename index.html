@@ -4,50 +4,85 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Futapreneurs Outreach</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="wrap">
-  <h1>Futapreneurs — WhatsApp Outreach</h1>
-  <div class="sub">Upload your CSV once. Click a name, WhatsApp opens with the message ready — you just hit send.</div>
+  <div class="header">
+    <h1>Futapreneurs Outreach</h1>
+    <div class="sub">Upload your CSV. Customize your template. Reach out faster.</div>
+  </div>
 
-  <div id="uploadCard" class="card">
+  <div id="uploadCard" class="card fade-in">
     <div class="drop" id="dropZone">
-      <div>Drop your CSV here, or</div>
-      <label class="btn" style="margin-top:10px;">
-        Choose CSV file
+      <div class="icon-upload">📁</div>
+      <div>Drag and drop your CSV here, or</div>
+      <label class="btn btn-primary" style="margin-top:16px;">
+        Browse Files
         <input type="file" id="fileInput" accept=".csv">
       </label>
-      <div class="format-hint">Expected columns (any order, header row required): <code>name</code>, <code>phone number</code>, <code>business stage</code></div>
+      <div class="format-hint">We'll automatically detect <code>Name</code> and <code>Phone</code> columns.</div>
     </div>
     <div id="uploadError" class="invalid" style="margin-top:10px;"></div>
   </div>
 
-  <div id="mainCard" class="card" style="display:none;">
+  <div id="mainCard" class="card fade-in" style="display:none;">
+    
+    <div class="stats-board">
+      <div class="stat">
+        <div class="stat-value" id="statTotal">0</div>
+        <div class="stat-label">Total</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value text-accent" id="statSent">0</div>
+        <div class="stat-label">Sent</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value text-warning" id="statPending">0</div>
+        <div class="stat-label">Pending</div>
+      </div>
+    </div>
+
     <div class="progress-row">
       <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%;"></div></div>
-      <div class="progress-label" id="progressLabel">0 / 0 sent</div>
     </div>
+
+    <div class="actions-board">
+      <button class="btn btn-gradient btn-large" id="nextPendingBtn">
+        <span class="icon">⚡</span> Message Next Pending
+      </button>
+      <button class="btn btn-ghost" id="undoGlobalBtn" style="display:none;" title="Undo last message sent">
+        <span class="icon">↩️</span> Undo Last
+      </button>
+    </div>
+
+    <details class="template-section" open>
+      <summary>✏️ Edit Message Template</summary>
+      <div class="template-editor">
+        <div class="template-hints">Available placeholders: <code class="tag">{name}</code> <code class="tag">{first_name}</code> <code class="tag">{phone}</code></div>
+        <textarea id="templateInput" rows="6" placeholder="Type your message template here..."></textarea>
+      </div>
+    </details>
 
     <div class="toolbar">
-      <input class="search" id="searchBox" placeholder="Search by name or phone…">
+      <input class="search" id="searchBox" placeholder="🔍 Search contacts...">
       <label class="toggle"><input type="checkbox" id="pendingOnly"> Show pending only</label>
-      <button class="btn ghost small" id="resetBtn">Reset progress</button>
-      <button class="btn ghost small" id="newCsvBtn">Upload new CSV</button>
+      <div class="spacer"></div>
+      <button class="btn btn-ghost small" id="resetBtn">Reset All</button>
+      <button class="btn btn-ghost small" id="newCsvBtn">New CSV</button>
     </div>
 
-    <div style="max-height:520px;overflow:auto;">
+    <div class="table-container">
       <table>
-        <thead><tr><th>Name</th><th>Phone</th><th>Stage</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>Phone</th><th>Stage</th><th>Status</th><th>Action</th></tr></thead>
         <tbody id="tableBody"></tbody>
       </table>
-      <div class="empty" id="emptyState" style="display:none;">No contacts match this filter.</div>
+      <div class="empty" id="emptyState" style="display:none;">
+        <div class="icon-empty">📭</div>
+        No contacts found.
+      </div>
     </div>
-
-    <details style="margin-top:16px;">
-      <summary style="cursor:pointer;color:var(--muted);font-size:0.82rem;">Preview message template</summary>
-      <div class="preview-box" id="previewBox"></div>
-    </details>
   </div>
 </div>
 
