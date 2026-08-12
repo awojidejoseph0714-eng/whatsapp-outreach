@@ -437,8 +437,7 @@ function renderSession(){
 
   if (nextPendingIndex !== -1) {
       nextPendingBtn.disabled = false;
-      const firstName = currentSession.contacts[nextPendingIndex].nameWords[currentSession.contacts[nextPendingIndex].firstNameIndex];
-      nextPendingBtn.textContent = `Message Next Pending (${escapeHtml(firstName)})`;
+      nextPendingBtn.textContent = `Send next`;
       nextPendingBtn.onclick = () => {
           const c = currentSession.contacts[nextPendingIndex];
           const key = c.phone + '|' + nextPendingIndex;
