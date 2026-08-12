@@ -1,21 +1,40 @@
 const DEFAULT_TEMPLATE = `Happy New Month, {first_name}. This is Adura from Futapreneurs. How have you been? I have four questions and a good news for you. [1] What's the update about your entrepreneurial journey so far? [2] is there anything you'd love to share regarding your personal and business growth since the beginning of the year till today? [3] Do you have any comment, suggestion and/or advice regarding futapreneurs, of the moment.        Unto, my good news,  I'm also happy to tell you, if you did not know that the Futapreneurs summit is coming up on the 24th of this month from 10am till the evening, at the Obafemi Awolowo Auditorium. The theme is Marketing, Sales and Money. We are gathering to connect with each other, and to learn from Top Experts in the field of Marketing, Sales and Our Finances. Over 120 people are registered, and vendors are plenty (those guys are going to be showing their business to hundreds of entreprenuers across FUTA), if you want to be part of them, you can do well to register as a vendor (there's only 24 spots left). I'd love to see you at the Summit. Let's I forget, don't forget to dress well, and carry your networking superpower when you're coming for the summit. Last Question [4] Are you registered for the summit?`;
 
-const CONTACTS_KEY = 'wa-outreach-contacts';
-const PROGRESS_KEY = 'wa-outreach-progress';
-const TEMPLATE_KEY = 'wa-outreach-template';
+const SESSIONS_KEY = 'wa-outreach-sessions-v2';
 
-let contacts = [];   
-let sentSet = new Set();
+let sessions = []; // Array of session objects
+let currentSession = null;
 let lastSentKey = null;
 
-const uploadCard = document.getElementById('uploadCard');
-const mainCard = document.getElementById('mainCard');
+// Temporary vars during CSV upload mapping
+let pendingCSVHeaders = [];
+let pendingCSVRows = [];
+
+// DOM Elements
+const viewDashboard = document.getElementById('viewDashboard');
+const viewUpload = document.getElementById('viewUpload');
+const viewSession = document.getElementById('viewSession');
+
+const sessionList = document.getElementById('sessionList');
+const dashboardEmpty = document.getElementById('dashboardEmpty');
+const dashboardError = document.getElementById('dashboardError');
+
+const uploadStep1 = document.getElementById('uploadStep1');
+const uploadStep2 = document.getElementById('uploadStep2');
 const uploadError = document.getElementById('uploadError');
+const fileInput = document.getElementById('fileInput');
+const dropZone = document.getElementById('dropZone');
+
+const mapNameCol = document.getElementById('mapNameCol');
+const mapPhoneCol = document.getElementById('mapPhoneCol');
+const mapStageCol = document.getElementById('mapStageCol');
+
+const sessionTitleDisplay = document.getElementById('sessionTitleDisplay');
+const templateInput = document.getElementById('templateInput');
 const tableBody = document.getElementById('tableBody');
 const searchBox = document.getElementById('searchBox');
 const pendingOnly = document.getElementById('pendingOnly');
 const emptyState = document.getElementById('emptyState');
-const templateInput = document.getElementById('templateInput');
 const nextPendingBtn = document.getElementById('nextPendingBtn');
 const undoGlobalBtn = document.getElementById('undoGlobalBtn');
 const batchFirstNameSelect = document.getElementById('batchFirstNameSelect');
@@ -25,7 +44,131 @@ const statSent = document.getElementById('statSent');
 const statPending = document.getElementById('statPending');
 const progressFill = document.getElementById('progressFill');
 
-// ---------- CSV parsing ----------
+// ---------- Storage ----------
+async function loadSessions(){
+  try {
+    let raw = null;
+    if(window.storage) {
+        const c = await window.storage.get(SESSIONS_KEY, false);
+        raw = c ? c.value : null;
+    } else {
+        raw = localStorage.getItem(SESSIONS_KEY);
+    }
+    if(raw) sessions = JSON.parse(raw);
+  } catch(e){
+    sessions = [];
+  }
+}
+
+async function saveSessions(){
+  dashboardError.textContent = '';
+  try {
+    const raw = JSON.stringify(sessions);
+    if(window.storage) {
+        await window.storage.set(SESSIONS_KEY, raw, false);
+    } else {
+        localStorage.setItem(SESSIONS_KEY, raw);
+    }
+  } catch(e){ 
+    console.error('Save failed', e); 
+    if(e.name === 'QuotaExceededError') {
+        dashboardError.textContent = "Storage limit reached! Please delete some old campaigns to save new ones.";
+    }
+  }
+}
+
+// ---------- Routing ----------
+function showView(view) {
+    viewDashboard.style.display = 'none';
+    viewUpload.style.display = 'none';
+    viewSession.style.display = 'none';
+    
+    if(view === 'dashboard') {
+        renderDashboard();
+        viewDashboard.style.display = 'block';
+    } else if(view === 'upload') {
+        uploadStep1.style.display = 'block';
+        uploadStep2.style.display = 'none';
+        uploadError.textContent = '';
+        viewUpload.style.display = 'block';
+    } else if(view === 'session') {
+        renderSession();
+        viewSession.style.display = 'block';
+    }
+}
+
+// ---------- Dashboard ----------
+function renderDashboard() {
+    sessionList.innerHTML = '';
+    if(sessions.length === 0) {
+        dashboardEmpty.style.display = 'block';
+    } else {
+        dashboardEmpty.style.display = 'none';
+        // Sort newest first
+        const sorted = [...sessions].sort((a,b) => b.timestamp - a.timestamp);
+        
+        sorted.forEach(s => {
+            const div = document.createElement('div');
+            div.className = 'session-item';
+            
+            const total = s.contacts.length;
+            const sent = s.sentSet.length;
+            
+            div.innerHTML = `
+                <div class="session-info">
+                    <h3>${escapeHtml(s.name)}</h3>
+                    <div class="session-meta">Created: ${new Date(s.timestamp).toLocaleString()} &bull; ${sent}/${total} Sent</div>
+                </div>
+                <button class="btn small" data-open-session="${s.id}">Open</button>
+            `;
+            sessionList.appendChild(div);
+        });
+    }
+}
+
+sessionList.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-open-session]');
+    if(btn) {
+        const id = btn.getAttribute('data-open-session');
+        currentSession = sessions.find(s => s.id === id);
+        if(currentSession) {
+            lastSentKey = null;
+            undoGlobalBtn.style.display = 'none';
+            templateInput.value = currentSession.template || DEFAULT_TEMPLATE;
+            showView('session');
+        }
+    }
+});
+
+document.getElementById('btnNewCampaign').addEventListener('click', () => {
+    showView('upload');
+});
+document.getElementById('btnCancelUpload').addEventListener('click', () => {
+    showView('dashboard');
+});
+document.getElementById('btnBackToDash').addEventListener('click', () => {
+    saveSessions();
+    showView('dashboard');
+});
+
+document.getElementById('btnEditSessionName').addEventListener('click', () => {
+    const newName = prompt("Enter new campaign name:", currentSession.name);
+    if(newName && newName.trim()) {
+        currentSession.name = newName.trim();
+        saveSessions();
+        renderSession();
+    }
+});
+document.getElementById('btnDeleteSession').addEventListener('click', () => {
+    if(confirm(`Are you sure you want to delete campaign "${currentSession.name}"? This cannot be undone.`)) {
+        sessions = sessions.filter(s => s.id !== currentSession.id);
+        currentSession = null;
+        saveSessions();
+        showView('dashboard');
+    }
+});
+
+// ---------- Upload & Mapping ----------
 function parseCSV(text){
   const rows = [];
   let row = [], field = '', inQuotes = false;
@@ -50,118 +193,156 @@ function parseCSV(text){
   return rows.filter(r => r.some(f => f.trim() !== ''));
 }
 
-function normalizePhone(raw){
-  let p = (raw || '').replace(/[^\d+]/g,'');
-  if(p.startsWith('+')) p = p.slice(1);
-  if(p.startsWith('0')) p = '234' + p.slice(1);
-  else if(p.length === 10) p = '234' + p;
-  return p;
-}
+function handleFile(file){
+  uploadError.textContent = '';
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try{
+      const rows = parseCSV(e.target.result);
+      if(rows.length < 2) throw new Error('CSV must contain a header row and at least one data row.');
+      
+      pendingCSVHeaders = rows[0].map(h => h.trim());
+      pendingCSVRows = rows.slice(1);
+      
+      // Populate Mapping UI
+      mapNameCol.innerHTML = '';
+      mapPhoneCol.innerHTML = '';
+      mapStageCol.innerHTML = '<option value="-1">-- None --</option>';
+      
+      let bestName = 0, bestPhone = 0, bestStage = -1;
+      
+      pendingCSVHeaders.forEach((h, i) => {
+          const hl = h.toLowerCase();
+          if(hl.includes('name')) bestName = i;
+          if(hl.includes('phone') || hl.includes('number') || hl.includes('contact')) bestPhone = i;
+          if(hl.includes('stage') || hl.includes('level')) bestStage = i;
+          
+          mapNameCol.innerHTML += `<option value="${i}">${escapeHtml(h)}</option>`;
+          mapPhoneCol.innerHTML += `<option value="${i}">${escapeHtml(h)}</option>`;
+          mapStageCol.innerHTML += `<option value="${i}">${escapeHtml(h)}</option>`;
+      });
+      
+      // Fallback
+      if(bestName === bestPhone && pendingCSVHeaders.length > 1) {
+          bestName = 0;
+          bestPhone = 1;
+      }
+      
+      mapNameCol.value = bestName;
+      mapPhoneCol.value = bestPhone;
+      mapStageCol.value = bestStage;
+      
+      uploadStep1.style.display = 'none';
+      uploadStep2.style.display = 'block';
 
-function buildContacts(rows){
-  const header = rows[0].map(h => h.trim().toLowerCase());
-  
-  let nameIdx = header.findIndex(h => h.includes('name'));
-  let phoneIdx = header.findIndex(h => h.includes('phone') || h.includes('number') || h.includes('contact'));
-  let stageIdx = header.findIndex(h => h.includes('stage') || h.includes('level'));
-
-  if (nameIdx === -1) nameIdx = 0;
-  if (phoneIdx === -1 && header.length > 1) phoneIdx = 1;
-
-  const out = [];
-  for(let i=1;i<rows.length;i++){
-    const r = rows[i];
-    const name = (r[nameIdx] || '').trim();
-    const rawPhone = (r[phoneIdx] || '').trim();
-    const stage = stageIdx !== -1 && stageIdx < r.length ? (r[stageIdx] || '').trim() : '';
-    
-    if(!name && !rawPhone) continue;
-    
-    const phone = normalizePhone(rawPhone);
-    const valid = /^234\d{10}$/.test(phone) || (phone.length >= 11 && phone.length <= 13);
-    
-    // Split name into words for the dropdown feature
-    const nameWords = name.split(/\s+/).filter(w => w.length > 0);
-    // If name is completely empty after split, give it a placeholder
-    if(nameWords.length === 0) nameWords.push('Friend');
-
-    out.push({ 
-        name, 
-        phone, 
-        stage, 
-        valid,
-        nameWords,
-        firstNameIndex: 0 // Default to first word
-    });
-  }
-  return out;
-}
-
-// ---------- Storage ----------
-async function loadFromStorage(){
-  try {
-    if(window.storage) {
-        const c = await window.storage.get(CONTACTS_KEY, false);
-        if(c && c.value) contacts = JSON.parse(c.value);
-        const p = await window.storage.get(PROGRESS_KEY, false);
-        if(p && p.value) sentSet = new Set(JSON.parse(p.value));
-        const t = await window.storage.get(TEMPLATE_KEY, false);
-        templateInput.value = (t && t.value) ? t.value : DEFAULT_TEMPLATE;
-    } else {
-        const c = localStorage.getItem(CONTACTS_KEY);
-        if(c) contacts = JSON.parse(c);
-        const p = localStorage.getItem(PROGRESS_KEY);
-        if(p) sentSet = new Set(JSON.parse(p));
-        const t = localStorage.getItem(TEMPLATE_KEY);
-        templateInput.value = t || DEFAULT_TEMPLATE;
+    }catch(err){
+      uploadError.textContent = err.message;
     }
-  } catch(e){
-    contacts = [];
-    sentSet = new Set();
-    templateInput.value = DEFAULT_TEMPLATE;
-  }
+  };
+  reader.readAsText(file);
 }
 
-async function saveStorageData(key, value){
-  try {
-    if(window.storage) await window.storage.set(key, value, false);
-    else localStorage.setItem(key, value);
-  } catch(e){ console.error('Save failed', e); }
-}
-
-async function saveContacts() { await saveStorageData(CONTACTS_KEY, JSON.stringify(contacts)); }
-async function saveProgress() { await saveStorageData(PROGRESS_KEY, JSON.stringify([...sentSet])); }
-async function saveTemplate() { await saveStorageData(TEMPLATE_KEY, templateInput.value); }
-
-templateInput.addEventListener('input', () => {
-    saveTemplate();
-    render();
+document.getElementById('btnSaveMapping').addEventListener('click', async () => {
+    const nIdx = parseInt(mapNameCol.value, 10);
+    const pIdx = parseInt(mapPhoneCol.value, 10);
+    const sIdx = parseInt(mapStageCol.value, 10);
+    
+    if(nIdx === pIdx) {
+        alert("Name and Phone must be different columns.");
+        return;
+    }
+    
+    const contacts = pendingCSVRows.map(r => {
+        const name = (r[nIdx] || '').trim();
+        const rawPhone = (r[pIdx] || '').trim();
+        const stage = (sIdx !== -1 && sIdx < r.length) ? (r[sIdx] || '').trim() : '';
+        
+        let p = rawPhone.replace(/[^\d+]/g,'');
+        if(p.startsWith('+')) p = p.slice(1);
+        if(p.startsWith('0')) p = '234' + p.slice(1);
+        else if(p.length === 10) p = '234' + p;
+        
+        const valid = /^234\d{10}$/.test(p) || (p.length >= 11 && p.length <= 13);
+        const nameWords = name.split(/\s+/).filter(w => w.length > 0);
+        if(nameWords.length === 0) nameWords.push('Friend');
+        
+        return { name, phone: p, stage, valid, nameWords, firstNameIndex: 0 };
+    }).filter(c => c.name || c.phone);
+    
+    if(contacts.length === 0) {
+        alert("No valid contacts found with those columns.");
+        return;
+    }
+    
+    const timestamp = Date.now();
+    const newSession = {
+        id: timestamp.toString(),
+        name: `Campaign - ${new Date(timestamp).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}`,
+        timestamp: timestamp,
+        template: DEFAULT_TEMPLATE,
+        contacts: contacts,
+        sentSet: [],
+        mapping: { nameIdx: nIdx, phoneIdx: pIdx, stageIdx: sIdx }
+    };
+    
+    sessions.push(newSession);
+    await saveSessions();
+    
+    currentSession = newSession;
+    lastSentKey = null;
+    undoGlobalBtn.style.display = 'none';
+    templateInput.value = currentSession.template;
+    showView('session');
 });
 
-// ---------- Rendering ----------
+fileInput.addEventListener('change', () => { if(fileInput.files[0]) handleFile(fileInput.files[0]); });
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('drag');
+  if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+dropZone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+});
+
+// ---------- Session Logic ----------
+
+templateInput.addEventListener('input', () => {
+    if(currentSession) {
+        currentSession.template = templateInput.value;
+        saveSessions();
+        renderSession();
+    }
+});
+
 function generateMessage(c) {
-    let tpl = templateInput.value;
+    let tpl = currentSession.template;
     tpl = tpl.replace(/{name}/g, c.name);
-    
-    // Get the selected first name based on the index
     const firstName = c.nameWords[c.firstNameIndex] || c.nameWords[0];
     tpl = tpl.replace(/{first_name}/g, firstName);
-    
     tpl = tpl.replace(/{phone}/g, c.phone);
     return tpl;
 }
 
-function render(){
+function renderSession(){
+  if(!currentSession) return;
+  
+  sessionTitleDisplay.textContent = currentSession.name;
+  
   const q = searchBox.value.trim().toLowerCase();
   const onlyPending = pendingOnly.checked;
 
   tableBody.innerHTML = '';
   let shown = 0;
   let nextPendingIndex = -1;
+  
+  const sentSetFast = new Set(currentSession.sentSet);
 
-  contacts.forEach((c, idx) => {
+  currentSession.contacts.forEach((c, idx) => {
     const key = c.phone + '|' + idx;
-    const isSent = sentSet.has(key);
+    const isSent = sentSetFast.has(key);
     
     if(!isSent && nextPendingIndex === -1 && c.valid) {
         nextPendingIndex = idx;
@@ -177,12 +358,25 @@ function render(){
     const message = generateMessage(c);
     const link = `https://wa.me/${c.phone}?text=${encodeURIComponent(message)}`;
 
-    // Build the dropdown options for this contact's name
     let selectOptions = '';
     c.nameWords.forEach((word, wordIdx) => {
         const selected = wordIdx === c.firstNameIndex ? 'selected' : '';
         selectOptions += `<option value="${wordIdx}" ${selected}>${escapeHtml(word)}</option>`;
     });
+    
+    // Inline phone editing if invalid
+    let phoneDisplay = '';
+    if(c.valid) {
+        phoneDisplay = escapeHtml(c.phone);
+    } else {
+        phoneDisplay = `
+            <div class="inline-edit-wrap">
+                <input type="text" class="inline-input" value="${escapeHtml(c.phone)}" data-edit-phone="${idx}">
+                <button class="btn small interactive" data-save-phone="${idx}">Save</button>
+            </div>
+            <div class="invalid" style="font-size:11px; margin-top:4px;">Invalid number</div>
+        `;
+    }
 
     tr.innerHTML = `
       <td class="name-cell">${escapeHtml(c.name)}</td>
@@ -191,13 +385,13 @@ function render(){
             ${selectOptions}
         </select>
       </td>
-      <td class="phone-cell">${c.valid ? escapeHtml(c.phone) : `<span class="invalid">${escapeHtml(c.phone || '—')} (check)</span>`}</td>
+      <td class="phone-cell">${phoneDisplay}</td>
       <td>${c.stage ? `<span class="stage-badge">${escapeHtml(c.stage)}</span>` : ''}</td>
       <td>${isSent ? 'Sent' : 'Pending'}</td>
       <td>
         <div style="display:flex;gap:6px;">
-            <a class="btn btn-primary small interactive" href="${link}" target="_blank" rel="noopener" data-idx="${idx}" aria-label="Open chat with ${escapeHtml(c.name)}">Open chat</a>
-            <button class="btn small interactive" data-toggle="${idx}" aria-label="Toggle sent status for ${escapeHtml(c.name)}">${isSent ? 'Undo' : 'Mark sent'}</button>
+            <a class="btn btn-primary small interactive ${c.valid ? '' : 'invalid'}" ${c.valid ? `href="${link}"` : 'disabled'} target="_blank" rel="noopener" data-idx="${idx}">Open chat</a>
+            <button class="btn small interactive" data-toggle="${idx}" ${!c.valid && !isSent ? 'disabled' : ''}>${isSent ? 'Undo' : 'Mark sent'}</button>
         </div>
       </td>
     `;
@@ -207,8 +401,8 @@ function render(){
   emptyState.style.display = shown === 0 ? 'block' : 'none';
 
   // Stats
-  const total = contacts.length;
-  const sentCount = sentSet.size;
+  const total = currentSession.contacts.length;
+  const sentCount = currentSession.sentSet.length;
   const pendingCount = total - sentCount;
   
   statTotal.textContent = total;
@@ -220,20 +414,20 @@ function render(){
   // Next Pending Button state
   if (nextPendingIndex !== -1) {
       nextPendingBtn.disabled = false;
-      const firstName = contacts[nextPendingIndex].nameWords[contacts[nextPendingIndex].firstNameIndex];
+      const firstName = currentSession.contacts[nextPendingIndex].nameWords[currentSession.contacts[nextPendingIndex].firstNameIndex];
       nextPendingBtn.textContent = `Message Next Pending (${escapeHtml(firstName)})`;
       nextPendingBtn.onclick = () => {
-          const c = contacts[nextPendingIndex];
+          const c = currentSession.contacts[nextPendingIndex];
           const key = c.phone + '|' + nextPendingIndex;
           
           const message = generateMessage(c);
           window.open(`https://wa.me/${c.phone}?text=${encodeURIComponent(message)}`, '_blank');
           
-          sentSet.add(key);
+          currentSession.sentSet.push(key);
           lastSentKey = key;
-          saveProgress();
+          saveSessions();
           undoGlobalBtn.style.display = 'inline-flex';
-          setTimeout(render, 150);
+          setTimeout(renderSession, 150);
       };
   } else {
       nextPendingBtn.disabled = true;
@@ -242,170 +436,111 @@ function render(){
   }
 }
 
-function escapeHtml(s){
-  return (s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-}
+// Global Undo
+undoGlobalBtn.addEventListener('click', () => {
+    if(!currentSession) return;
+    if(lastSentKey && currentSession.sentSet.includes(lastSentKey)) {
+        currentSession.sentSet = currentSession.sentSet.filter(k => k !== lastSentKey);
+        lastSentKey = null;
+        saveSessions();
+        undoGlobalBtn.style.display = 'none';
+        renderSession();
+    }
+});
 
-// ----- Event Listeners -----
+// Table interactions
+tableBody.addEventListener('click', (e) => {
+  if(!currentSession) return;
+  
+  // Save inline phone edit
+  const savePhoneBtn = e.target.closest('button[data-save-phone]');
+  if(savePhoneBtn) {
+      const idx = savePhoneBtn.getAttribute('data-save-phone');
+      const input = document.querySelector(`input[data-edit-phone="${idx}"]`);
+      if(input) {
+          let p = input.value.replace(/[^\d+]/g,'');
+          if(p.startsWith('+')) p = p.slice(1);
+          if(p.startsWith('0')) p = '234' + p.slice(1);
+          else if(p.length === 10) p = '234' + p;
+          
+          currentSession.contacts[idx].phone = p;
+          currentSession.contacts[idx].valid = /^234\d{10}$/.test(p) || (p.length >= 11 && p.length <= 13);
+          saveSessions();
+          renderSession();
+      }
+      return;
+  }
+
+  const openLink = e.target.closest('a[data-idx]');
+  if(openLink && !openLink.hasAttribute('disabled')){
+    const idx = openLink.getAttribute('data-idx');
+    const c = currentSession.contacts[idx];
+    const key = c.phone + '|' + idx;
+    if(!currentSession.sentSet.includes(key)) {
+        currentSession.sentSet.push(key);
+    }
+    lastSentKey = key;
+    undoGlobalBtn.style.display = 'inline-flex';
+    saveSessions();
+    setTimeout(renderSession, 150);
+    return;
+  }
+  
+  const toggleBtn = e.target.closest('button[data-toggle]');
+  if(toggleBtn && !toggleBtn.hasAttribute('disabled')){
+    const idx = toggleBtn.getAttribute('data-toggle');
+    const c = currentSession.contacts[idx];
+    const key = c.phone + '|' + idx;
+    
+    if(currentSession.sentSet.includes(key)) {
+        currentSession.sentSet = currentSession.sentSet.filter(k => k !== key);
+        if(lastSentKey === key) { lastSentKey = null; undoGlobalBtn.style.display = 'none'; }
+    } else {
+        currentSession.sentSet.push(key);
+        lastSentKey = key;
+        undoGlobalBtn.style.display = 'inline-flex';
+    }
+    saveSessions();
+    renderSession();
+  }
+});
 
 // Batch First Name Dropdown
 batchFirstNameSelect.addEventListener('change', (e) => {
+    if(!currentSession) return;
     const val = parseInt(e.target.value, 10);
     if(isNaN(val)) return;
 
-    contacts.forEach(c => {
+    currentSession.contacts.forEach(c => {
         if(val === -1) {
-            // Last word
             c.firstNameIndex = Math.max(0, c.nameWords.length - 1);
         } else {
-            // Cap the index at the length of their name array - 1
             c.firstNameIndex = Math.min(val, Math.max(0, c.nameWords.length - 1));
         }
     });
 
-    saveContacts();
-    render();
-    
-    // Reset the dropdown back to placeholder
+    saveSessions();
+    renderSession();
     e.target.value = "none";
 });
 
 // Individual Name Dropdown
 tableBody.addEventListener('change', (e) => {
+    if(!currentSession) return;
     if(e.target.hasAttribute('data-name-select')) {
         const idx = e.target.getAttribute('data-name-select');
         const newWordIdx = parseInt(e.target.value, 10);
-        contacts[idx].firstNameIndex = newWordIdx;
-        saveContacts();
-        render(); // Re-render to update the WhatsApp link
+        currentSession.contacts[idx].firstNameIndex = newWordIdx;
+        saveSessions();
+        renderSession(); 
     }
 });
 
-// Global Undo
-undoGlobalBtn.addEventListener('click', () => {
-    if(lastSentKey && sentSet.has(lastSentKey)) {
-        sentSet.delete(lastSentKey);
-        lastSentKey = null;
-        saveProgress();
-        undoGlobalBtn.style.display = 'none';
-        render();
-    }
-});
-
-// Table buttons
-tableBody.addEventListener('click', (e) => {
-  const openLink = e.target.closest('a[data-idx]');
-  if(openLink){
-    const idx = openLink.getAttribute('data-idx');
-    const c = contacts[idx];
-    const key = c.phone + '|' + idx;
-    sentSet.add(key);
-    lastSentKey = key;
-    undoGlobalBtn.style.display = 'inline-flex';
-    saveProgress();
-    setTimeout(render, 150);
-    return;
-  }
-  const toggleBtn = e.target.closest('button[data-toggle]');
-  if(toggleBtn){
-    const idx = toggleBtn.getAttribute('data-toggle');
-    const c = contacts[idx];
-    const key = c.phone + '|' + idx;
-    if(sentSet.has(key)) {
-        sentSet.delete(key);
-        if(lastSentKey === key) { lastSentKey = null; undoGlobalBtn.style.display = 'none'; }
-    } else {
-        sentSet.add(key);
-        lastSentKey = key;
-        undoGlobalBtn.style.display = 'inline-flex';
-    }
-    saveProgress();
-    render();
-  }
-});
-
-searchBox.addEventListener('input', render);
-pendingOnly.addEventListener('change', render);
-
-document.getElementById('resetBtn').addEventListener('click', async () => {
-  if(!confirm('Clear sent/pending progress for all contacts? Your contact list stays.')) return;
-  sentSet = new Set();
-  lastSentKey = null;
-  undoGlobalBtn.style.display = 'none';
-  await saveProgress();
-  render();
-});
-
-document.getElementById('newCsvBtn').addEventListener('click', async () => {
-  if(!confirm('Upload a different CSV? This replaces the current contact list (progress will reset too).')) return;
-  contacts = [];
-  sentSet = new Set();
-  lastSentKey = null;
-  undoGlobalBtn.style.display = 'none';
-  try {
-    if(window.storage) {
-        await window.storage.delete(CONTACTS_KEY, false);
-        await window.storage.delete(PROGRESS_KEY, false);
-    } else {
-        localStorage.removeItem(CONTACTS_KEY);
-        localStorage.removeItem(PROGRESS_KEY);
-    }
-  }catch(e){}
-  mainCard.style.display = 'none';
-  uploadCard.style.display = 'block';
-});
-
-// ---------- Upload handling ----------
-const fileInput = document.getElementById('fileInput');
-const dropZone = document.getElementById('dropZone');
-
-function handleFile(file){
-  uploadError.textContent = '';
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    try{
-      const rows = parseCSV(e.target.result);
-      if(rows.length < 2) throw new Error('CSV must contain a header row and at least one data row.');
-      contacts = buildContacts(rows);
-      if(contacts.length === 0) throw new Error('No valid contact rows found.');
-      sentSet = new Set();
-      lastSentKey = null;
-      undoGlobalBtn.style.display = 'none';
-      await saveContacts();
-      await saveProgress();
-      uploadCard.style.display = 'none';
-      mainCard.style.display = 'block';
-      render();
-    }catch(err){
-      uploadError.textContent = err.message;
-    }
-  };
-  reader.readAsText(file);
-}
-
-fileInput.addEventListener('change', () => { if(fileInput.files[0]) handleFile(fileInput.files[0]); });
-dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
-dropZone.addEventListener('drop', (e) => {
-  e.preventDefault();
-  dropZone.classList.remove('drag');
-  if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
-});
-
-// Keyboard accessibility for drag and drop zone
-dropZone.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        fileInput.click();
-    }
-});
+searchBox.addEventListener('input', renderSession);
+pendingOnly.addEventListener('change', renderSession);
 
 // ---------- Init ----------
 (async function init(){
-  await loadFromStorage();
-  if(contacts.length > 0){
-    uploadCard.style.display = 'none';
-    mainCard.style.display = 'block';
-    render();
-  }
+  await loadSessions();
+  showView('dashboard');
 })();

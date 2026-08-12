@@ -14,19 +14,71 @@
     <div class="sub">Upload CSV. Customize template. Send messages.</div>
   </div>
 
-  <div id="uploadCard" class="card fade-in">
-    <div class="drop" id="dropZone" tabindex="0" aria-label="Drop area for CSV file">
-      <div style="font-weight: 500; margin-bottom: 8px;">Upload Contacts CSV</div>
-      <div class="format-hint">Expected: Name, Phone</div>
-      <label class="btn btn-primary" style="margin-top:20px; cursor: pointer;">
-        Select File
-        <input type="file" id="fileInput" accept=".csv" aria-label="Select CSV File">
-      </label>
+  <!-- VIEW: DASHBOARD -->
+  <div id="viewDashboard" class="card fade-in">
+    <div class="dashboard-header">
+      <h2 style="margin: 0; font-size: 20px;">Your Campaigns</h2>
+      <button class="btn btn-primary" id="btnNewCampaign">New Campaign</button>
     </div>
-    <div id="uploadError" class="invalid" style="margin-top:10px;" aria-live="polite"></div>
+    
+    <div id="dashboardError" class="invalid" style="margin-bottom: 16px;"></div>
+    
+    <div class="session-list" id="sessionList">
+      <!-- Session items injected here -->
+    </div>
+    
+    <div class="empty" id="dashboardEmpty" style="display:none;">
+      No campaigns yet. Click "New Campaign" to start.
+    </div>
   </div>
 
-  <div id="mainCard" class="card fade-in" style="display:none;">
+  <!-- VIEW: UPLOAD / MAPPING -->
+  <div id="viewUpload" class="card fade-in" style="display:none;">
+    <button class="btn small" id="btnCancelUpload" style="margin-bottom: 24px;">&larr; Back to Dashboard</button>
+    
+    <div id="uploadStep1">
+      <div class="drop" id="dropZone" tabindex="0" aria-label="Drop area for CSV file">
+        <div style="font-weight: 500; margin-bottom: 8px;">Upload Contacts CSV</div>
+        <div class="format-hint">Ensure your CSV has a header row.</div>
+        <label class="btn btn-primary" style="margin-top:20px; cursor: pointer;">
+          Select File
+          <input type="file" id="fileInput" accept=".csv" aria-label="Select CSV File">
+        </label>
+      </div>
+      <div id="uploadError" class="invalid" style="margin-top:10px;" aria-live="polite"></div>
+    </div>
+    
+    <div id="uploadStep2" style="display:none;">
+      <h3 style="margin-top: 0;">Map your columns</h3>
+      <p class="format-hint" style="margin-bottom: 20px;">We found multiple columns. Please tell us which ones to use.</p>
+      
+      <div class="mapping-row">
+         <label for="mapNameCol">Name Column:</label>
+         <select id="mapNameCol" class="interactive"></select>
+      </div>
+      <div class="mapping-row" style="margin-top: 12px;">
+         <label for="mapPhoneCol">Phone Column:</label>
+         <select id="mapPhoneCol" class="interactive"></select>
+      </div>
+      <div class="mapping-row" style="margin-top: 12px;">
+         <label for="mapStageCol">Stage/Tag Column (Optional):</label>
+         <select id="mapStageCol" class="interactive"></select>
+      </div>
+      
+      <button class="btn btn-primary" id="btnSaveMapping" style="margin-top:24px;">Create Campaign</button>
+    </div>
+  </div>
+
+  <!-- VIEW: SESSION (ACTIVE CAMPAIGN) -->
+  <div id="viewSession" class="card fade-in" style="display:none;">
+    
+    <div style="margin-bottom:24px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 16px;">
+       <button class="btn small" id="btnBackToDash">&larr; Dashboard</button>
+       <h2 id="sessionTitleDisplay" style="margin:0; font-size:18px;">Session Name</h2>
+       <button class="btn small interactive" id="btnEditSessionName" aria-label="Rename session">Rename</button>
+       <div class="spacer"></div>
+       <button class="btn small interactive invalid" id="btnDeleteSession" style="border-color:#eb5757; color:#eb5757;">Delete Campaign</button>
+    </div>
     
     <div class="stats-board">
       <div class="stat">
@@ -78,10 +130,6 @@
           <option value="-1">Last Word</option>
         </select>
       </div>
-
-      <div class="spacer"></div>
-      <button class="btn small interactive" id="resetBtn">Reset All</button>
-      <button class="btn small interactive" id="newCsvBtn">New CSV</button>
     </div>
 
     <div class="table-container">
